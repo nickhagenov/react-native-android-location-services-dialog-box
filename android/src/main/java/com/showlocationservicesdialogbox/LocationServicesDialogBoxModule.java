@@ -5,7 +5,11 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.location.LocationManager;
+import android.net.Uri;
+import android.os.Build;
+import android.provider.Settings;
 import android.text.Html;
 import com.facebook.react.bridge.*;
 
@@ -30,13 +34,40 @@ class LocationServicesDialogBoxModule extends ReactContextBaseJavaModule impleme
     }
 
     @ReactMethod
-    public void checkLocationServicesIsEnabled(ReadableMap configMap, Promise promise) {
+    public void checkLocationService(ReadableMap configMap, Promise promise) {
         promiseCallback = promise;
         map = configMap;
         currentActivity = getCurrentActivity();
         checkLocationService(false);
     }
 
+    @ReactMethod
+    public void checkLocationPermission() {
+        int PERMISSION_REQ_CODE = 1234;
+        int OVERLAY_PERMISSION_REQ_CODE = 1235;
+
+        String[] perms = {
+                "android.permission.ACCESS_COARSE_LOCATION",
+                "android.permission.SYSTEM_ALERT_WINDOW",
+                "android.permission.ACCESS_FINE_LOCATION",
+        };
+        if(Build.VERSION.SDK_INT>Build.VERSION_CODES.LOLLIPOP_MR1) {
+            // Checking if we can draw window overlay
+            if (!Settings.canDrawOverlays(getCurrentActivity())) {
+                // Requesting permission for window overlay(needed for all react-native apps)
+                Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        Uri.parse("package:" + getCurrentActivity().getPackageName()));
+                getCurrentActivity().startActivityForResult(intent, OVERLAY_PERMISSION_REQ_CODE);
+            }
+            for(String perm : perms){
+                // Checking each persmission and if denied then requesting permissions
+                if(getCurrentActivity().checkSelfPermission(perm) == PackageManager.PERMISSION_DENIED){
+                    getCurrentActivity().requestPermissions(perms, PERMISSION_REQ_CODE);
+                    break;
+                }
+            }
+        }
+    }
     private void checkLocationService(Boolean activityResult) {
         // Robustness check
         if (currentActivity == null || map == null || promiseCallback == null) return;
@@ -52,6 +83,8 @@ class LocationServicesDialogBoxModule extends ReactContextBaseJavaModule impleme
             promiseCallback.resolve("enabled");
         }
     }
+
+
 
     private static void displayPromptForEnablingGPS(final Activity activity, final ReadableMap configMap, final Promise promise) {
         final AlertDialog.Builder builder = new AlertDialog.Builder(activity);
