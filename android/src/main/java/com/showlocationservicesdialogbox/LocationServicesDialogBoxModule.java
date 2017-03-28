@@ -10,15 +10,22 @@ import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.PermissionChecker;
 import android.text.Html;
 import com.facebook.react.bridge.*;
 
 class LocationServicesDialogBoxModule extends ReactContextBaseJavaModule implements ActivityEventListener {
     private Promise promiseCallback;
+    private Promise checkLocationPromise = null;
     private ReadableMap map;
     private Activity currentActivity;
     private static final int ENABLE_LOCATION_SERVICES = 1009;
-
+    public static final int PERMISSION_REQ_CODE = 1234;
+    private static String[] perms = {
+            "android.permission.ACCESS_COARSE_LOCATION",
+            "android.permission.ACCESS_FINE_LOCATION",
+    };
     LocationServicesDialogBoxModule(ReactApplicationContext reactContext) {
         super(reactContext);
         reactContext.addActivityEventListener(this);
@@ -42,23 +49,26 @@ class LocationServicesDialogBoxModule extends ReactContextBaseJavaModule impleme
     }
 
     @ReactMethod
-    public void checkLocationPermission() {
-        int PERMISSION_REQ_CODE = 1234;
-        int OVERLAY_PERMISSION_REQ_CODE = 1235;
-
+    public void checkLocationPermission(Promise promise) {
+        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP_MR1) {
+            for(String perm : perms){
+                // Checking each permission and if denied then requesting permissions
+                if (getCurrentActivity().checkSelfPermission(perm) == PackageManager.PERMISSION_DENIED){
+                    promise.reject(new Throwable("disabled"));
+                    return;
+                }
+            }
+        }
+        promiseCallback.resolve("enabled");
+    }
+    @ReactMethod
+    public void enableLocationPermission(Promise promise) {
         String[] perms = {
                 "android.permission.ACCESS_COARSE_LOCATION",
-                "android.permission.SYSTEM_ALERT_WINDOW",
                 "android.permission.ACCESS_FINE_LOCATION",
         };
-        if(Build.VERSION.SDK_INT>Build.VERSION_CODES.LOLLIPOP_MR1) {
-            // Checking if we can draw window overlay
-            if (!Settings.canDrawOverlays(getCurrentActivity())) {
-                // Requesting permission for window overlay(needed for all react-native apps)
-                Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                        Uri.parse("package:" + getCurrentActivity().getPackageName()));
-                getCurrentActivity().startActivityForResult(intent, OVERLAY_PERMISSION_REQ_CODE);
-            }
+        checkLocationPromise = promise;
+        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP_MR1) {
             for(String perm : perms){
                 // Checking each persmission and if denied then requesting permissions
                 if(getCurrentActivity().checkSelfPermission(perm) == PackageManager.PERMISSION_DENIED){
