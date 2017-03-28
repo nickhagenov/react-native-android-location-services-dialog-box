@@ -17,7 +17,6 @@ import com.facebook.react.bridge.*;
 
 class LocationServicesDialogBoxModule extends ReactContextBaseJavaModule implements ActivityEventListener {
     private Promise promiseCallback;
-    private Promise checkLocationPromise = null;
     private ReadableMap map;
     private Activity currentActivity;
     private static final int ENABLE_LOCATION_SERVICES = 1009;
@@ -51,7 +50,7 @@ class LocationServicesDialogBoxModule extends ReactContextBaseJavaModule impleme
     @ReactMethod
     public void checkLocationPermission(Promise promise) {
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP_MR1) {
-            for(String perm : perms){
+            for (String perm : perms) {
                 // Checking each permission and if denied then requesting permissions
                 if (getCurrentActivity().checkSelfPermission(perm) == PackageManager.PERMISSION_DENIED){
                     promise.reject(new Throwable("disabled"));
@@ -59,7 +58,7 @@ class LocationServicesDialogBoxModule extends ReactContextBaseJavaModule impleme
                 }
             }
         }
-        promiseCallback.resolve("enabled");
+        promise.resolve("enabled");
     }
     @ReactMethod
     public void enableLocationPermission(Promise promise) {
@@ -67,7 +66,6 @@ class LocationServicesDialogBoxModule extends ReactContextBaseJavaModule impleme
                 "android.permission.ACCESS_COARSE_LOCATION",
                 "android.permission.ACCESS_FINE_LOCATION",
         };
-        checkLocationPromise = promise;
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP_MR1) {
             for(String perm : perms){
                 // Checking each persmission and if denied then requesting permissions
